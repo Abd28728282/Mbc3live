@@ -3,73 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>البث المباشر - فضائية التعليمية</title>
-    <!-- استدعاء مكتبة HLS.js لتشغيل روابط m3u8 -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>البث المباشر</title>
+    
+    <!-- مكتبة Video.js (CSS & JS) -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
     <style>
-        body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
             box-sizing: border-box;
         }
 
-        .player-container {
+        html, body {
             width: 100%;
-            max-width: 800px;
-            background: #000;
-            border-radius: 12px;
+            height: 100%;
+            background-color: #000000;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        video {
-            width: 100%;
-            height: auto;
-            display: block;
+        /* تعديل حجم مشغل Video.js لملء الشاشة بالكامل */
+        .video-js {
+            width: 100vw !important;
+            height: 100vh !important;
         }
 
-        h2 {
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-            text-align: center;
+        /* ضبط الفيديو الداخلي */
+        .vjs-tech {
+            object-fit: contain;
         }
     </style>
 </head>
 <body>
 
-    <h2>فضائية فلسطين التعليمية</h2>
-
-    <div class="player-container">
-        <video id="video" controls autoplay playsinline></video>
-    </div>
+    <video
+        id="live-player"
+        class="video-js vjs-default-skin"
+        controls
+        autoplay
+        preload="auto"
+        playsinline>
+        <source src="https://pbc.furrera.ps/PalestineEDU/index.m3u8" type="application/x-mpegURL">
+    </video>
 
     <script>
-        const video = document.getElementById('video');
-        const videoSrc = 'https://pbc.furrera.ps/PalestineEDU/index.m3u8';
-
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(videoSrc);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play().catch(e => console.log("التشغيل التلقائي يحتاج إذن المستخدم"));
-            });
-        }
-        // دعم متصفح Safari على آيفون وآيباد (يدعم m3u8 تلقائياً)
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = videoSrc;
-            video.addEventListener('loadedmetadata', function() {
-                video.play();
-            });
-        }
+        // تهيئة المشغل
+        const player = videojs('live-player', {
+            autoplay: 'any', // محاولة التشغيل التلقائي حتى مع قيود المتصفحات
+            responsive: true,
+            fluid: false
+        });
     </script>
 
 </body>
