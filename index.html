@@ -24,7 +24,6 @@
             overflow: hidden;
         }
 
-        /* حاوية المشغل لملء الشاشة بالكامل */
         .artplayer-app {
             width: 100vw;
             height: 100vh;
@@ -41,7 +40,7 @@
             url: 'https://pbc.furrera.ps/PalestineEDU/index.m3u8',
             isLive: true,
             autoplay: true,
-            muted: true, // يوصى به لضمان نجاح التشغيل التلقائي في أغلب المتصفحات
+            muted: false, // محاولة التشغيل بالصوت مباشرة
             autoSize: true,
             fullscreen: true,
             fullscreenWeb: true,
@@ -57,6 +56,21 @@
                     }
                 },
             },
+        });
+
+        // التعامل مع منع المتصفح للتشغيل التلقائي مصحوباً بالصوت
+        art.on('ready', () => {
+            const playPromise = art.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    // في حال حظر المتصفح للصوت، يتم تشغيل الفيديو مكتوماً مع إظهار زِر للمستخدم لفك الكتم
+                    art.muted = true;
+                    art.play();
+                    
+                    art.notice.show = 'اضغط على الشاشة لتفعيل الصوت';
+                });
+            }
         });
     </script>
 
