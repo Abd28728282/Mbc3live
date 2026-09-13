@@ -35,12 +35,15 @@
     <div class="artplayer-app"></div>
 
     <script>
+        // إضافة متغير عشوائي أو وقت لمنع تخزين الرابط في الذاكرة المؤقتة
+        const streamUrl = 'https://pbc.furrera.ps/PalestineEDU/index.m3u8?t=' + new Date().getTime();
+
         const art = new Artplayer({
             container: '.artplayer-app',
-            url: 'https://pbc.furrera.ps/PalestineEDU/index.m3u8',
+            url: streamUrl,
             isLive: true,
             autoplay: true,
-            muted: false, // محاولة التشغيل بالصوت مباشرة
+            muted: false, 
             autoSize: true,
             fullscreen: true,
             fullscreenWeb: true,
@@ -48,7 +51,16 @@
             customType: {
                 m3u8: function (video, url) {
                     if (Hls.isSupported()) {
-                        const hls = new Hls();
+                        // إعدادات خاصة لـ HLS لمنع تراكم الذاكرة المؤقتة للـ Buffer
+                        const hls = new Hls({
+                            maxBufferLength: 30,          // الحد الأقصى للـ Buffer بالثواني
+                            maxMaxBufferLength: 60,
+                            liveSyncDurationCount: 3,     // تقليل التأخير والابقاء على البث المباشر الحقيقي
+                            liveMaxLatencyDurationCount: 10,
+                            enableWorker: true,
+                            // إضافة عشوائية لطلب الأجزاء لمنع الكاش المحلي إن وجد
+                            loader: Hls.DefaultConfig.loader
+                        });
                         hls.loadSource(url);
                         hls.attachMedia(video);
                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -64,10 +76,8 @@
             
             if (playPromise !== undefined) {
                 playPromise.catch(() => {
-                    // في حال حظر المتصفح للصوت، يتم تشغيل الفيديو مكتوماً مع إظهار زِر للمستخدم لفك الكتم
                     art.muted = true;
                     art.play();
-                    
                     art.notice.show = 'اضغط على الشاشة لتفعيل الصوت';
                 });
             }
