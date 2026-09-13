@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>البث المباشر</title>
-    
-    <!-- مكتبة Video.js (CSS & JS) -->
-    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <!-- مكتبة ArtPlayer.js -->
+    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+    <!-- مكتبة HLS.js لدعم بث m3u8 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <style>
         * {
@@ -23,36 +24,39 @@
             overflow: hidden;
         }
 
-        /* تعديل حجم مشغل Video.js لملء الشاشة بالكامل */
-        .video-js {
-            width: 100vw !important;
-            height: 100vh !important;
-        }
-
-        /* ضبط الفيديو الداخلي */
-        .vjs-tech {
-            object-fit: contain;
+        /* حاوية المشغل لملء الشاشة بالكامل */
+        .artplayer-app {
+            width: 100vw;
+            height: 100vh;
         }
     </style>
 </head>
 <body>
 
-    <video
-        id="live-player"
-        class="video-js vjs-default-skin"
-        controls
-        autoplay
-        preload="auto"
-        playsinline>
-        <source src="https://pbc.furrera.ps/PalestineEDU/index.m3u8" type="application/x-mpegURL">
-    </video>
+    <div class="artplayer-app"></div>
 
     <script>
-        // تهيئة المشغل
-        const player = videojs('live-player', {
-            autoplay: 'any', // محاولة التشغيل التلقائي حتى مع قيود المتصفحات
-            responsive: true,
-            fluid: false
+        const art = new Artplayer({
+            container: '.artplayer-app',
+            url: 'https://pbc.furrera.ps/PalestineEDU/index.m3u8',
+            isLive: true,
+            autoplay: true,
+            muted: true, // يوصى به لضمان نجاح التشغيل التلقائي في أغلب المتصفحات
+            autoSize: true,
+            fullscreen: true,
+            fullscreenWeb: true,
+            type: 'm3u8',
+            customType: {
+                m3u8: function (video, url) {
+                    if (Hls.isSupported()) {
+                        const hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        video.src = url;
+                    }
+                },
+            },
         });
     </script>
 
