@@ -3,86 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>البث المباشر</title>
-
-    <!-- مكتبة ArtPlayer.js -->
-    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
-    <!-- مكتبة HLS.js لدعم بث m3u8 -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
+    <title>مزيل الخلفية - CrispCut</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            background-color: #000000;
-            overflow: hidden;
-        }
-
-        .artplayer-app {
-            width: 100vw;
-            height: 100vh;
-        }
+        body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 0 16px; background: #f5f5f5; text-align: center; }
+        h1 { font-size: 1.3rem; }
+        .upload-box { background: #fff; padding: 30px; border-radius: 10px; border: 2px dashed #ccc; cursor: pointer; margin: 16px 0; }
+        .upload-box:hover { border-color: #25D366; }
+        #status { color: #555; margin: 12px 0; font-size: 0.9rem; min-height: 20px; }
+        .images { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+        .img-card { background: #fff; padding: 8px; border-radius: 8px; }
+        .img-card p { margin: 0 0 8px 0; font-size: 0.8rem; color: #888; }
+        .img-card img { max-width: 260px; max-height: 260px; display: block; border-radius: 4px; }
+        .result-bg { background: repeating-conic-gradient(#e0e0e0 0% 25%, #fff 0% 50%) 50% / 20px 20px; }
+        button { padding: 12px 24px; font-size: 1rem; background: #25D366; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 12px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
+    <h1>✂️ مزيل الخلفية (CrispCut)</h1>
+    <p style="font-size:0.85rem; color:#888;">نموذج AI بحجم 6.5MB. المعالجة محلية بالكامل.</p>
 
-    <div class="artplayer-app"></div>
+    <div class="upload-box" id="uploadBox">
+        <p>📁 انقر لاختيار صورة</p>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
 
-    <script>
-        // إضافة متغير عشوائي أو وقت لمنع تخزين الرابط في الذاكرة المؤقتة
-        const streamUrl = 'https://pbc.furrera.ps/PalestineEDU/index.m3u8?t=' + new Date().getTime();
+    <div id="status">جاهز. اختر صورة للبدء.</div>
 
-        const art = new Artplayer({
-            container: '.artplayer-app',
-            url: streamUrl,
-            isLive: true,
-            autoplay: true,
-            muted: false, 
-            autoSize: true,
-            fullscreen: true,
-            fullscreenWeb: true,
-            type: 'm3u8',
-            customType: {
-                m3u8: function (video, url) {
-                    if (Hls.isSupported()) {
-                        // إعدادات خاصة لـ HLS لمنع تراكم الذاكرة المؤقتة للـ Buffer
-                        const hls = new Hls({
-                            maxBufferLength: 30,          // الحد الأقصى للـ Buffer بالثواني
-                            maxMaxBufferLength: 60,
-                            liveSyncDurationCount: 3,     // تقليل التأخير والابقاء على البث المباشر الحقيقي
-                            liveMaxLatencyDurationCount: 10,
-                            enableWorker: true,
-                            // إضافة عشوائية لطلب الأجزاء لمنع الكاش المحلي إن وجد
-                            loader: Hls.DefaultConfig.loader
-                        });
-                        hls.loadSource(url);
-                        hls.attachMedia(video);
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = url;
-                    }
-                },
-            },
-        });
+    <div class="images hidden" id="imagesContainer">
+        <div class="img-card">
+            <p>الأصلية</p>
+            <img id="originalImg" alt="الأصلية">
+        </div>
+        <div class="img-card">
+            <p>بعد الإزالة</p>
+            <img id="resultImg" class="result-bg" alt="النتيجة">
+        </div>
+    </div>
 
-        // التعامل مع منع المتصفح للتشغيل التلقائي مصحوباً بالصوت
-        art.on('ready', () => {
-            const playPromise = art.play();
+    <button id="downloadBtn" class="hidden">💾 تنزيل PNG</button>
+
+    <script type="module">
+        // استيراد مكتبة CrispCut
+        import { cut } from 'https://cdn.jsdelivr.net/npm/@crispcut/background-removal/+esm';
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadBox = document.getElementById('uploadBox');
+        const status = document.getElementById('status');
+        const imagesContainer = document.getElementById('imagesContainer');
+        const originalImg = document.getElementById('originalImg');
+        const resultImg = document.getElementById('resultImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let currentResultUrl = null;
+
+        // عند النقر على منطقة الرفع
+        uploadBox.onclick = () => fileInput.click();
+
+        // عند اختيار صورة
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // عرض الصورة الأصلية فوراً
+            originalImg.src = URL.createObjectURL(file);
+            imagesContainer.classList.remove('hidden');
+            resultImg.src = ''; // مسح النتيجة السابقة
+            downloadBtn.classList.add('hidden');
             
-            if (playPromise !== undefined) {
-                playPromise.catch(() => {
-                    art.muted = true;
-                    art.play();
-                    art.notice.show = 'اضغط على الشاشة لتفعيل الصوت';
-                });
+            // تنظيف الرابط القديم إذا وجد
+            if (currentResultUrl) {
+                URL.revokeObjectURL(currentResultUrl);
+                currentResultUrl = null;
             }
-        });
-    </script>
 
+            status.textContent = '⏳ جاري تحميل النموذج (المرة الأولى فقط)...';
+
+            try {
+                // استدعاء دالة إزالة الخلفية
+                // image: يمكن أن يكون File أو Blob أو ImageBitmap
+                const imageBitmap = await createImageBitmap(file);
+                
+                status.textContent = '⏳ جاري إزالة الخلفية...';
+                
+                const result = await cut(imageBitmap, {
+                    model: 'fast',      // النموذج الصغير 6.5MB
+                    gpu: true,          // محاولة استخدام GPU إن أمكن
+                    onProgress: (p) => {
+                        // p قيمة بين 0 و 1
+                        status.textContent = `⏳ جاري المعالجة... ${Math.round(p * 100)}%`;
+                    }
+                });
+
+                // عرض النتيجة
+                resultImg.src = result.url;
+                currentResultUrl = result.url;
+                
+                downloadBtn.classList.remove('hidden');
+                status.textContent = '✅ تمت إزالة الخلفية!';
+                
+                // ربط زر التنزيل
+                downloadBtn.onclick = () => {
+                    result.download('removed-background.png');
+                };
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = '❌ حدث خطأ: ' + err.message;
+                // في حالة فشل GPU، حاول مرة أخرى بدون GPU (CPU)
+                if (err.message && err.message.includes('GPU')) {
+                    status.textContent = '⚠️ فشل GPU، جاري المحاولة على CPU...';
+                    try {
+                        const imageBitmap = await createImageBitmap(file);
+                        const result = await cut(imageBitmap, { model: 'fast', gpu: false });
+                        resultImg.src = result.url;
+                        currentResultUrl = result.url;
+                        downloadBtn.classList.remove('hidden');
+                        status.textContent = '✅ تمت إزالة الخلفية (CPU)!';
+                        downloadBtn.onclick = () => result.download('removed-background.png');
+                    } catch (err2) {
+                        status.textContent = '❌ فشل أيضاً على CPU: ' + err2.message;
+                    }
+                }
+            }
+        };
+    </script>
 </body>
 </html>
